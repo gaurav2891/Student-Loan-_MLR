@@ -1,0 +1,173 @@
+
+#+echo=TRUE,message=FALSE,warning=FALSE
+# Load the R library "ISLR"
+library(ISLR)
+# Attach the "Default" data set available in "ISLR" library
+attach(Default)
+# Name of the variables in "Default" data set
+# Or
+#Default<-read.csv("Credit.csv")
+#Default<-read.csv("default.csv", header = TRUE)
+names(Default)
+# Dimension of the "Default" data set
+dim(Default)
+# Descriptive Summary of the data set 
+summary(Default)
+# Scatter Plot
+plot(balance,income, col=c("green","red")[default])
+
+##Boxplots
+boxplot(balance~default,col=(c("red","blue")),xlab="Default",ylab="Balance",main="Balance vs Default")
+boxplot(income~default,col=(c("red","blue")),xlab="Default",ylab="Income",main="Income vs Default")
+
+
+# Fitting a logistic regression model using the predictors "balance"
+# The function "glm()" fits generalized linear models, a class of models that includes logistic regression as a special case
+# The function "glm()" is similar to that of "lm()", except that we have to pass on the argument "family=binomial" in order to fit a logistic regression model
+default_new<- ifelse(default=="Yes", 1, 0)
+mod_1=glm(default_new~balance,data=Default,family=binomial)
+summary(mod_1)
+
+# Plotting the fitted logistic equation
+default_new<- ifelse(default=="Yes", 1, 0)
+plot(balance,default_new,ylim=c(0,1),xlab="Balance",ylab="Default")
+points(balance,fitted(mod_1),col="red",pch="+")
+points(balance,fitted(mod_2),col="blue",pch="+")
+
+#curve(predict(mod_1,data.frame(balance=x),type="resp"),add=TRUE,lwd=2,col="red")
+
+# Fitting a logistic regression model using the predictors "student"
+mod_2=glm(default_new~student,data=Default,family=binomial)
+
+summary(mod_2)
+# Fitting a logistic regression model using the predictors "balance", "student", and "income"
+mod_3=glm(default_new~balance+student+income,data=Default,family=binomial)
+summary(mod_3)
+
+# Using the "predict()" function to obtain the probabilities of the form "P(Y=1|X)"
+# The "type=response" ensures the output of the form "P(Y=1|X)", rather than other information such as the logit
+mod_3.probs=predict(mod_3,type="response")
+
+# Printing first ten predicted probabilities
+mod_3.probs[1:10]
+
+# Using the "contrast()" function to check the dummy variable created by R
+contrasts(default)
+
+# Conversion of probabilities into class labels
+mod_3.pred=rep("No",10000)
+mod_3.pred[mod_3.probs>.5]="Yes"
+
+# Creating Confusion Matrix to check how many observations are correctly or incorrectly classified
+table(mod_3.pred,default)
+
+# Calculating the fraction of days for which the prediction was correct
+mean(mod_3.pred==default)
+
+# Calculating the misclassification rate
+mean(mod_3.pred!=default)
+
+# Changing the cut-off 
+# Conversion of probabilities into class labels
+mod_3.pred=rep("No",10000)
+mod_3.pred[mod_3.probs>.2]="Yes"
+
+# Creating Confusion Matrix to check how many observations are correctly or incorrectly classified
+table(mod_3.pred,default)
+
+# Calculating the fraction of days for which the prediction was correct
+mean(mod_3.pred==default)
+
+# Calculating the misclassification rate
+mean(mod_3.pred!=default)
+
+# ROC Plot
+library(pROC)
+fg<-roc(default,mod_3.probs, best.method="youden")
+plot(roc(default,mod_3.probs),col="blue",legacy.axes = TRUE)
+max(fg$sensitivities + fg$specificities)
+
+library(Epi)
+jk<-ROC( form = default~balance,data=Default, plot="ROC" )
+jk$AUC
+
+
+# Hosmer-Lemeshow Test for checking the model
+library(ResourceSelection)
+hoslem.test(default_new, fitted(mod_3))
+
+# Pseudo R-squared
+library(pscl)
+pR2(mod_3)
+
+# Test Based on Deviance
+1-pchisq(2920.6-1571.5,3)
+
+
+
+#Train and Test
+
+# original data frame
+library(dplyr)
+#train_t<-Default[1:8000,]
+
+train<-sample_frac(Default, 0.8)
+tempb<-as.numeric(rownames(train)) # because rownames() returns character
+test<-Default[-tempb,]
+
+
+#Another Methods
+require(caTools)
+set.seed(101) 
+sample = sample.split(default, SplitRatio = .75)
+train = subset(Default, sample == TRUE)
+test  = subset(Default, sample == FALSE)
+# Fitting a logistic regression model using the predictors "balance", "student", and "income"
+mod_3=glm(default~balance+student+income,data=train,family=binomial)
+summary(mod_3)
+
+# Using the "predict()" function to obtain the probabilities of the form "P(Y=1|X)"
+# The "type=response" ensures the output of the form "P(Y=1|X)", rather than other information such as the logit
+mod_3.probs=predict(mod_3, test, type="response")
+# Printing first ten predicted probabilities
+mod_3.probs[1:10]
+
+# Using the "contrast()" function to check the dummy variable created by R
+contrasts(test$default)
+
+# Conversion of probabilities into class labels
+mod_3.pred=rep("No",2000)
+mod_3.pred[mod_3.probs>.5]="Yes"
+
+# Creating Confusion Matrix to check how many observations are correctly or incorrectly classified
+table(mod_3.pred,test$default)
+
+# Calculating the fraction of days for which the prediction was correct
+mean(mod_3.pred==test$default)
+
+# Calculating the misclassification rate
+mean(mod_3.pred!=test$default)
+
+# Changing the cut-off 
+# Conversion of probabilities into class labels
+mod_3.pred=rep("No",2000)
+mod_3.pred[mod_3.probs>.2]="Yes"
+
+# Creating Confusion Matrix to check how many observations are correctly or incorrectly classified
+table(mod_3.pred,test$default)
+
+# Calculating the fraction of days for which the prediction was correct
+mean(mod_3.pred==test$default)
+
+
+
+
+
+# Calculating the misclassification rate
+mean(mod_3.pred!=test$default)
+
+mod_3=glm(default~balance+student+income,data=Default,family=binomial)
+mod_3.pred=rep("No",10000)
+mod_3.pred[mod_3.probs>.5]="Yes"
+
+cv.error=cv.glm(Default,mod_3,K=10)
